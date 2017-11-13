@@ -88,3 +88,14 @@ ________________________________________________________________________________
 - we have to implement generate_successor and crossover in generate_children, in individual_grid
 - individual_grid is a wrapper that contains the genome which is the level data
   | each thing in the list is an individual_grid
+
+____________________________________________________________________________________________
+
+
+480 total
+ELITIST  (5%)  - 24 elite (5%)
+ROULETTE (10%) - 12 elite (25%) 36 (75%)
+
+Elite[Sorted], if the one selected is odd, take half of the evens, and vice-versa
+
+25% Elite-Elite, 75% Elite-Random

@@ -82,14 +82,14 @@ class Individual_Grid(object):
         # do crossover with other
         left = 1          # leftmost column of the level
         right = width - 1 # rightmost column of the level
+        dadChance = 0
+        dadChance = .58 if self._fitness > other._fitness else .42
         for y in range(height): # for each tile in height
             for x in range(left, right): # for each tile from (left, right)
                 # STUDENT Which one should you take?  Self, or other?  Why?
                 # STUDENT consider putting more constraints on this to prevent pipes in the air, etc
-                if random.random() > .5:
-                    new_genome[y][x] = self.genome[y][x]
-                else:
-                    new_genome[y][x] = other.genome[y][x]
+                # compare fitness of both genomes
+                new_genome[y][x] = self.genome[y][x] if random.random() < dadChance else other.genome[y][x]
 
         # do mutation; note we're returning a one-element tuple here
         return (Individual_Grid(new_genome), )
@@ -348,17 +348,19 @@ Individual = Individual_Grid
 
 
 def generate_successors(population):
+    
     # generate_children(population)
     results = []
     # STUDENT Design and implement this
     # Hint: Call generate_children() on some individuals and fill up results.
+    # 5% Elitist, 
     results = Individual.generate_children(random.choice(population), random.choice(population))
     return results
 
 
 def ga():
     # STUDENT Feel free to play with this parameter
-    pop_limit = 480
+    pop_limit = 64
     # Code to parallelize some computations
     batches = os.cpu_count()
     if pop_limit % batches != 0:
