@@ -82,11 +82,17 @@ class Individual_Grid(object):
         # do crossover with other
         left = 1
         right = width - 1
+
+        #height of 16 from top to bottom
         for y in range(height):
             for x in range(left, right):
                 # STUDENT Which one should you take?  Self, or other?  Why?
                 # STUDENT consider putting more constraints on this to prevent pipes in the air, etc
-                pass
+                choose_for_me = random.random()
+                if choose_for_me > 0.5:
+                    new_genome[y][x] = self.genome[y][x]
+                else:
+                    new_genome[y][x] = other.genome[y][x]
         # do mutation; note we're returning a one-element tuple here
         return (Individual_Grid(new_genome),)
 
@@ -345,8 +351,12 @@ Individual = Individual_Grid
 
 def generate_successors(population):
     results = []
+    # print(population[0])
     # STUDENT Design and implement this
     # Hint: Call generate_children() on some individuals and fill up results.
+    # at some point we need to filter
+    results = Individual.generate_children(random.choice(population),random.choice(population))
+
     return results
 
 
@@ -414,7 +424,7 @@ if __name__ == "__main__":
     best = final_gen[0]
     print("Best fitness: " + str(best.fitness()))
     now = time.strftime("%m_%d_%H_%M_%S")
-    # STUDENT You can change this if you want to blast out the whole generation, or ten random samples, or...
+     #STUDENT You can change this if you want to blast out the whole generation, or ten random samples, or...
     for k in range(0, 10):
         with open("levels/" + now + "_" + str(k) + ".txt", 'w') as f:
             for row in final_gen[k].to_level():
