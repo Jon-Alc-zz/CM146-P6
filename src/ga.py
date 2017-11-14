@@ -67,13 +67,28 @@ class Individual_Grid(object):
         # STUDENT implement a mutation operator, also consider not mutating this individual
         # STUDENT also consider weighting the different tile types so it's not uniformly random
         # STUDENT consider putting more constraints on this to prevent pipes in the air, etc
+        new_genome = copy.deepcopy(genome)
 
         left = 1
         right = width - 1
         for y in range(height):
             for x in range(left, right):
-                pass
-        return genome
+                # build a pipe
+                if new_genome[y][x] == "T":
+                    if y > (height / 2):
+                        # down pipe
+                        for y2 in range(y + 1, height):
+                            print("BEFORE: ", new_genome[y2][x])
+                            new_genome[y2][x] = "|"
+                            print("AFTER:  ", new_genome[y2][x])
+                    else:
+                        # up pipe
+                        for y2 in range(0, y):
+                            print("BEFORE: ", new_genome[y2][x])
+                            new_genome[y2][x] = "|"
+                            print("AFTER:  ", new_genome[y2][x])
+
+        return new_genome
 
     # Create zero or more children from self and other
     def generate_children(self, other):
@@ -92,6 +107,7 @@ class Individual_Grid(object):
                 new_genome[y][x] = self.genome[y][x] if random.random() < dadChance else other.genome[y][x]
 
         # do mutation; note we're returning a one-element tuple here
+        new_genome = self.mutate(new_genome)
         return (Individual_Grid(new_genome))
 
     # Turn the genome into a level string (easy for this genome)
@@ -357,7 +373,7 @@ def generate_successors(population):
     pop_limit = len(population)
     sortedPopulation = sorted(population, key=lambda level: level._fitness * -1) # sort on fitness (most to least)
 
-    for num in range(round(.05 * pop_limit)): # 5%, (weirdly) rounded to whole number (see doc)
+    for num in range(int(.05 * pop_limit)): # 5%, (weirdly) rounded to whole number (see doc)
         elitePopulation.append(sortedPopulation.pop(num)) # append to elitePopulation while removing from sortedPopulation
 
     for num in range(pop_limit): # generate children until population limit is reached
@@ -377,8 +393,8 @@ def generate_successors(population):
         for item in sortedPopulation:
             fitnessTotal += abs(item._fitness)
 
-        for num in range(round(.075 * len(sortedPopulation))): # get 7.5% random
-            rouletteSelect = random.randrange(0, round(fitnessTotal)) # rouletteSelect is a number between 0 and total fitness
+        for num in range(int(.075 * len(sortedPopulation))): # get 7.5% random
+            rouletteSelect = random.randrange(0, int(fitnessTotal)) # rouletteSelect is a number between 0 and total fitness
             for item in range(len(sortedPopulation)):
                 rouletteSelect -= abs(sortedPopulation[item]._fitness) # keep subtracting from the random roulette select number until it hits 0
                 if (rouletteSelect <= 0): # if selected
@@ -388,15 +404,15 @@ def generate_successors(population):
             if rouletteSelect > 0: # in case the selected number is more than the fitness, append last
                 roulettePopulation.append(sortedPopulation.pop())
 
-        results.append(random.choice(elitePopulation).generate_children(random.choice(roulettePopulation)))
+        results.append(Individual.generate_children(random.choice(elitePopulation), random.choice(roulettePopulation)))
 
-    print("TESTING: ", len(results), results)
+    # print("TESTING: ", len(results), results)
     return results
 
 
 def ga():
     # STUDENT Feel free to play with this parameter
-    pop_limit = 128
+    pop_limit = 32
     # Code to parallelize some computations
     batches = os.cpu_count()
     if pop_limit % batches != 0:
@@ -419,7 +435,8 @@ def ga():
         now = start
         print("Use ctrl-c to terminate this loop manually.")
         try:
-            while True:
+            runs = 0
+            while runs == 0:
                 now = time.time()
                 # Print out statistics
                 if generation > 0:
@@ -448,6 +465,7 @@ def ga():
                 popdone = time.time()
                 print("Calculated fitnesses in:", popdone - gendone, "seconds")
                 population = next_population
+                runs += 1
         except KeyboardInterrupt:
             pass
     return population

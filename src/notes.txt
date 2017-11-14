@@ -96,8 +96,6 @@ ________________________________________________________________________________
 ELITIST  (5%)  - 24 elite (5%)
 ROULETTE (10%) - 12 elite (25%) 36 (75%)
 
-Elite[Sorted], if the one selected is odd, take the evens, and vice-versa
+Elite[Sorted], if the one selected is odd, take half of the evens, and vice-versa
 
 25% Elite-Elite, 75% Elite-Random
-
-need to find a way to stop individual items from being negative
