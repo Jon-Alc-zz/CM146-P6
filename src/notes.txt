@@ -1,0 +1,101 @@
+Genome = DNA, result of Genome = Phenotype
+Black hair vs. Blonde, Tall vs. short Phenotype is physical trait, DNA is trait causer
+
+Mr Krabs Boots
+
+Individual Grid:
+16 rows, 0 is top and height (16) is bottom
+- empty
+X solid wall
+? coin block
+M mushroom block
+B break block
+o coin
+| vertical pipe segment
+
+https://arxiv.org/pdf/1603.00930.pdf
+
+____________________________________________________________________________________________
+
+
+Tile definitions
+
+Solid - Any tile that is solid and has no other interactions, most commonly ground, giant mushroom, or inert block tiles of which no distinction is made
+Enemy - Any enemy, again no distinctions are made between enemies
+Destructible Block - A block that can be destroyed by Super Mario
+Question Mark Block With Coin - A ?-Block that only contains a coin
+Question Mark Block With Power-up - A ?-Block that contains a powerup, either a mushroom/
+	flower, a star, or a 1-up
+Coin - A coin
+Bullet Bill Shooter Top - The top of a Bullet Bill shooting cannon
+Bullet Bill Shooter Column - The column that supports the top of the Bullet Bill shooter
+Left Pipe - The left side of a pipe
+Right Pipe - The right side of a pipe
+Top Left Pipe - The top left side of a pipe
+Top Right Pipe - The top right side of a pipe
+Empty - The lack of all other tile types
+
+length - (?) length of level
+negativeSpace - % of empty space reachable by player
+pathPercentage - % of the level taken up by optimal path through level
+emptyPercentage - % of level taken up by empty space
+decorationPercentage - % of interesting tiles that aren't necessarily solid/empty
+leniency - number of enemies + number of gaps - number of rewards
+meaningfulJumps - jumps that were caused by enemy or pit
+jumps - number of jumps in the level's optimal path 
+meaningfulJumpVariance - 
+jumpVariance - 
+linearity - how close the level can be fit to a line
+solvability (1 = solvable)
+
+____________________________________________________________________________________________
+
+
+Genetic algorithms - picking a candidate well adds less work to successor functions
+
+Mutation - take one candidate and change some parts of it
+Crossover - take two candidates and combine pieces of their elements
+Generate population = generate children? it's weighted by fitness
+
+fitness function is like a heuristic, but it's not guaranteed--it's probabilistic
+
+generate a new population by taking P, doing crossover, and picking candidates with probability based on fitness
+after, mutate each and return population
+^ example, crossover not necessary but helps avoid local maxima, but you need to use mutation to avoid breeding more of the same
+
+____________________________________________________________________________________________
+
+
+copy doesn't use references, it actually makes individual copies https://docs.python.org/3/library/copy.html
+shutil is file operations https://docs.python.org/3/library/shutil.html
+
+class Individual_Grid:
+	__init__ is the main function
+	calculate_fitness() creates the fitness estimation and returns to _fitness
+	fitness() runs ^ if self._fitness is none
+	X mutate() mutates genome into a new one
+	X generate_children() crosses one genome with another
+	to_level() turns genome into level string
+	* empty_individual() initializes the flag, mario's position, and empty spaces
+	* random_individual() fills parts of the level from choices, randomly
+	offset_by_upto & clip don't modify
+
+____________________________________________________________________________________________
+
+
+- max is not working because the population is empty
+  | we need to generate the population
+- we have to implement generate_successor and crossover in generate_children, in individual_grid
+- individual_grid is a wrapper that contains the genome which is the level data
+  | each thing in the list is an individual_grid
+
+____________________________________________________________________________________________
+
+
+480 total
+ELITIST  (5%)  - 24 elite (5%)
+ROULETTE (10%) - 12 elite (25%) 36 (75%)
+
+Elite[Sorted], if the one selected is odd, take half of the evens, and vice-versa
+
+25% Elite-Elite, 75% Elite-Random
