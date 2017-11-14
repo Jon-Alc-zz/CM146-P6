@@ -67,13 +67,29 @@ class Individual_Grid(object):
         # STUDENT implement a mutation operator, also consider not mutating this individual
         # STUDENT also consider weighting the different tile types so it's not uniformly random
         # STUDENT consider putting more constraints on this to prevent pipes in the air, etc
+        new_genome = copy.deepcopy(genome)
 
         left = 1
         right = width - 1
         for y in range(height):
             for x in range(left, right):
-                pass
-        return genome
+                #build a pipe
+                if new_genome[y][x] == "T":
+                    if y > height/2:
+                        # down pipe
+                        for y2 in range(y+1, height):
+                            new_genome[y2][x] = "|"
+                    else:
+                        # up pipe
+                        for y2 in range(0, y-1):
+                            new_genome[y2][x] = "|"
+
+                """mutate_chance = random.random()
+                if mutate_chance < 0.15:
+                    tilepos = random.randrange(left, right)
+                    new_genome[y][x] = genome[y][tilepos]"""
+
+        return new_genome
 
     # Create zero or more children from self and other
     def generate_children(self, other):
@@ -91,7 +107,8 @@ class Individual_Grid(object):
                 # compare fitness of both genomes
                 new_genome[y][x] = self.genome[y][x] if random.random() < dadChance else other.genome[y][x]
         # do mutation; note we're returning a one-element tuple here
-        return (Individual_Grid(new_genome), )
+        new_genome = self.mutate(new_genome)
+        return (Individual_Grid(new_genome))
 
     # Turn the genome into a level string (easy for this genome)
     def to_level(self):
@@ -264,8 +281,8 @@ class Individual_DE(object):
 
     def generate_children(self, other):
         # STUDENT How does this work?  Explain it in your writeup.
-        pa = random.randint(0, len(self.genome) - 1)
-        pb = random.randint(0, len(other.genome) - 1)
+        pa = random.randint(0, len(self.genome) - 1) if len(self.genome) > 0 else 0
+        pb = random.randint(0, len(other.genome) - 1) if len(other.genome) > 0 else 0  
         a_part = self.genome[:pa] if len(self.genome) > 0 else []
         b_part = other.genome[pb:] if len(other.genome) > 0 else []
         ga = a_part + b_part
@@ -347,20 +364,55 @@ Individual = Individual_Grid
 
 
 def generate_successors(population):
-    
-    # generate_children(population)
-    results = []
-    # print(population[0])
     # STUDENT Design and implement this
-    # Hint: Call generate_children() on some individuals and fill up results.
-    # 5% Elitist, 
-    results = Individual.generate_children(random.choice(population), random.choice(population))
+    # Hint: Call ren() on some individuals and fill up results.
+    # 5% Elitist, 10% Random - 25% Elite (.025), 75% Roulette (.075)
+    results = []            # returned list for genomes selected to carry over to next population
+    elitePopulation = []    # list of genomes selected through elitist select; 5% of pop_limit
+    roulettePopulation = [] # list of genomes selected through roulette wheel select; 10% of pop_limit, has half of elitePopulation
+    pop_limit = len(population)
+    sortedPopulation = sorted(population, key=lambda level: level._fitness * -1) # sort on fitness (most to least)
+
+    for num in range(round(.05 * pop_limit)): # 5%, (weirdly) rounded to whole number (see doc)
+        elitePopulation.append(sortedPopulation.pop(num)) # append to elitePopulation while removing from sortedPopulation
+
+    for num in range(pop_limit): # generate children until population limit is reached
+
+        elitePick = random.randrange(0, pop_limit - 1) # pick a random number from 0 to length of elitePopulation
+
+        # if elitePick is even, append odd and vice-versa 
+        if elitePick % 2 != 0:
+            for item in range(0, len(elitePopulation), 2):
+                roulettePopulation.append(elitePopulation[item])
+        else:
+            for item in range(1, len(elitePopulation), 2):
+                roulettePopulation.append(elitePopulation[item])
+
+        # select via roulette to fill roulettePopulation
+        fitnessTotal = 0 # get total fitness of population
+        for item in sortedPopulation:
+            fitnessTotal += abs(item._fitness)
+
+        for num in range(round(.075 * len(sortedPopulation))): # get 7.5% random
+            rouletteSelect = random.randrange(0, round(fitnessTotal)) # rouletteSelect is a number between 0 and total fitness
+            for item in range(len(sortedPopulation)):
+                rouletteSelect -= abs(sortedPopulation[item]._fitness) # keep subtracting from the random roulette select number until it hits 0
+                if (rouletteSelect <= 0): # if selected
+                    fitnessTotal -= sortedPopulation[item]._fitness # remove item from pool and append it
+                    roulettePopulation.append(sortedPopulation.pop(item))
+                    break
+            if rouletteSelect > 0: # in case the selected number is more than the fitness, append last
+                roulettePopulation.append(sortedPopulation.pop())
+
+        results.append(random.choice(elitePopulation).generate_children(random.choice(roulettePopulation)))
+
+    #print("TESTING: ", len(results), results)
     return results
 
 
 def ga():
     # STUDENT Feel free to play with this parameter
-    pop_limit = 64
+    pop_limit = 128
     # Code to parallelize some computations
     batches = os.cpu_count()
     if pop_limit % batches != 0:
@@ -421,11 +473,9 @@ if __name__ == "__main__":
     final_gen = sorted(ga(), key=Individual.fitness, reverse=True)
     best = final_gen[0]
     print("Best fitness: " + str(best.fitness()))
-    """
     now = time.strftime("%m_%d_%H_%M_%S")
      #STUDENT You can change this if you want to blast out the whole generation, or ten random samples, or...
     for k in range(0, 10):
         with open("levels/" + now + "_" + str(k) + ".txt", 'w') as f:
             for row in final_gen[k].to_level():
                 f.write("".join(row) + "\n")
-    """
