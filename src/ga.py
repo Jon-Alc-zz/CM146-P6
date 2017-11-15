@@ -45,8 +45,8 @@ class Individual_Grid(object):
         # Default fitness function: Just some arbitrary combination of a few criteria.  Is it good?  Who knows?
         # STUDENT Modify this, and possibly add more metrics.  You can replace this with whatever code you like.
         coefficients = dict(
-            meaningfulJumpVariance=0.5,
-            negativeSpace=0.6,
+            meaningfulJumpVariance=0.6,
+            negativeSpace=0.5,
             pathPercentage=0.5,
             emptyPercentage=0.6,
             linearity=-0.5,
@@ -69,24 +69,91 @@ class Individual_Grid(object):
         # STUDENT consider putting more constraints on this to prevent pipes in the air, etc
         new_genome = copy.deepcopy(genome)
 
-        left = 1
-        right = width - 1
+        # mutate for each tile: pit, walls, pipe, blocks (coin, breakable, Mushroom), enemies, coins
+        left = 10
+        right = width - 10
+
+        modifiable = list(range(left, right)) # don't modify the first and last ten tiles
+        unmodifiable = modifiable
+
+
+        for i in range(left, right): # refill pits
+            new_genome[height - 1][i] = "X"
+
+        counter = 0 # counter keeps track of position for modifiable's index
+
+        # THIS LOOP GENERATES PITS
+        while counter < len(modifiable):
+            temp = modifiable[counter]
+            if random.random() < temp * .25: # chance to create pit is based on progress
+                tileNum = modifiable[counter]
+                pitDistance = random.randrange(2, 6) # Pits are anywhere from 2 to 5 tiles long
+                if tileNum + pitDistance > modifiable[-1]: # check if length is longer than modifiable
+                    pitDistance = counter - modifiable[-1]
+                for tiles in range(pitDistance): # Create a pit and remove it from modifiable
+                    temp = modifiable.pop(counter)
+                    new_genome[height - 1][temp] = "-"
+                counter += 5 # at least five spaces to next pit
+            else:
+                counter += 1
+
+        counter = 0
+
+        """
+        # THIS LOOP GENERATES WALLS
+        while counter < len(modifiable):
+            if random.random() < .25:
+                tileNum = modifiable[counter]
+                wallDistance = random.randrange(1, 5)
+                for currentDistance in range(wallDistance):
+                    if new_genome[height - 1][tileNum + currentDistance] != "-": # Check if there's not a pit
+                        wallHeight = random.randrange(2, 5)
+                        for currentHeight in range(wallHeight):
+                            new_genome[height - (1 + currentHeight)][temp] = "X"
+                counter += 5 # at least five spaces to next wall
+            else:
+                counter += 1
+        """
+
+        # THIS LOOP GENERATES PIPE HEADS
+        for x in range(left, right):
+            pipe_head_not_found = True
+            for y in range(height):
+                if new_genome[y][x] == "T" or new_genome[y][x + 1] == "T": # Check if we're not overlapping pipes
+                    pipe_head_found = False
+                    break
+             
+            if pipe_head_not_found == True:
+                if random.random() < .25:
+                    if random.random () < .5:
+                        new_genome[random.randrange(2, 6)][x] = "T"
+                    else:
+                        new_genome[random.randrange(height - 6, height - 3)][x] = "T"
+
+
+        # THIS LOOP FIXES PIPES
         for y in range(height):
             for x in range(left, right):
+
                 # build a pipe
                 if new_genome[y][x] == "T":
-                    if y > (height / 2):
-                        # down pipe
+                    # check if there's an existing pipe body
+                    if new_genome[y + 1][x] == "|": # if pipe body is below
                         for y2 in range(y + 1, height):
-                            print("BEFORE: ", new_genome[y2][x])
                             new_genome[y2][x] = "|"
-                            print("AFTER:  ", new_genome[y2][x])
+                    elif new_genome[y - 1][x] == "|": # if pipe body is above
+                        for y2 in range(0, y - 1):
+                            new_genome[y2][x] = "|"
+
                     else:
-                        # up pipe
-                        for y2 in range(0, y):
-                            print("BEFORE: ", new_genome[y2][x])
-                            new_genome[y2][x] = "|"
-                            print("AFTER:  ", new_genome[y2][x])
+                        if y > (height / 2):
+                            # down pipe
+                            for y2 in range(y + 1, height):
+                                new_genome[y2][x] = "|"
+                        else:
+                            # up pipe
+                            for y2 in range(0, y):
+                                new_genome[y2][x] = "|"
 
         return new_genome
 
@@ -108,7 +175,7 @@ class Individual_Grid(object):
 
         # do mutation; note we're returning a one-element tuple here
         new_genome = self.mutate(new_genome)
-        return (Individual_Grid(new_genome))
+        return (Individual_Grid(new_genome), )
 
     # Turn the genome into a level string (easy for this genome)
     def to_level(self):
@@ -374,37 +441,39 @@ def generate_successors(population):
     sortedPopulation = sorted(population, key=lambda level: level._fitness * -1) # sort on fitness (most to least)
 
     for num in range(int(.05 * pop_limit)): # 5%, (weirdly) rounded to whole number (see doc)
-        elitePopulation.append(sortedPopulation.pop(num)) # append to elitePopulation while removing from sortedPopulation
+        temp = sortedPopulation.pop(num)
+        elitePopulation.append(temp) # append to elitePopulation while removing from sortedPopulation
+        results.append(temp)
 
-    for num in range(pop_limit): # generate children until population limit is reached
+    elitePick = random.randrange(0, pop_limit - 1) # pick a random number from 0 to length of elitePopulation
 
-        elitePick = random.randrange(0, pop_limit - 1) # pick a random number from 0 to length of elitePopulation
+    # if elitePick is even, append odd and vice-versa 
+    if elitePick % 2 != 0:
+        for item in range(0, len(elitePopulation), 2):
+            roulettePopulation.append(elitePopulation[item])
+    else:
+        for item in range(1, len(elitePopulation), 2):
+            roulettePopulation.append(elitePopulation[item])
 
-        # if elitePick is even, append odd and vice-versa 
-        if elitePick % 2 != 0:
-            for item in range(0, len(elitePopulation), 2):
-                roulettePopulation.append(elitePopulation[item])
-        else:
-            for item in range(1, len(elitePopulation), 2):
-                roulettePopulation.append(elitePopulation[item])
+    # select via roulette to fill roulettePopulation
+    fitnessTotal = 0 # get total fitness of population
+    for item in sortedPopulation:
+        fitnessTotal += abs(item._fitness)
 
-        # select via roulette to fill roulettePopulation
-        fitnessTotal = 0 # get total fitness of population
-        for item in sortedPopulation:
-            fitnessTotal += abs(item._fitness)
+    for num in range(int(.075 * len(sortedPopulation))): # get 7.5% random
+        rouletteSelect = random.randrange(0, int(fitnessTotal)) # rouletteSelect is a number between 0 and total fitness
+        for item in range(len(sortedPopulation)):
+            rouletteSelect -= abs(sortedPopulation[item]._fitness) # keep subtracting from the random roulette select number until it hits 0
+            if (rouletteSelect <= 0): # if selected
+                fitnessTotal -= sortedPopulation[item]._fitness # remove item from pool and append it
+                roulettePopulation.append(sortedPopulation.pop(item))
+                break
+        if rouletteSelect > 0: # in case the selected number is more than the fitness, append last
+            roulettePopulation.append(sortedPopulation.pop())
 
-        for num in range(int(.075 * len(sortedPopulation))): # get 7.5% random
-            rouletteSelect = random.randrange(0, int(fitnessTotal)) # rouletteSelect is a number between 0 and total fitness
-            for item in range(len(sortedPopulation)):
-                rouletteSelect -= abs(sortedPopulation[item]._fitness) # keep subtracting from the random roulette select number until it hits 0
-                if (rouletteSelect <= 0): # if selected
-                    fitnessTotal -= sortedPopulation[item]._fitness # remove item from pool and append it
-                    roulettePopulation.append(sortedPopulation.pop(item))
-                    break
-            if rouletteSelect > 0: # in case the selected number is more than the fitness, append last
-                roulettePopulation.append(sortedPopulation.pop())
-
-        results.append(Individual.generate_children(random.choice(elitePopulation), random.choice(roulettePopulation)))
+    for i in range(pop_limit - len(results)):
+        child = random.choice(elitePopulation).generate_children(random.choice(roulettePopulation))
+        results.append(child[0])
 
     # print("TESTING: ", len(results), results)
     return results
@@ -412,7 +481,7 @@ def generate_successors(population):
 
 def ga():
     # STUDENT Feel free to play with this parameter
-    pop_limit = 32
+    pop_limit = 64
     # Code to parallelize some computations
     batches = os.cpu_count()
     if pop_limit % batches != 0:
@@ -421,9 +490,13 @@ def ga():
     with mpool.Pool(processes=os.cpu_count()) as pool:
         init_time = time.time()
         # STUDENT (Optional) change population initialization
+        """ Before
         population = [Individual.random_individual() if random.random() < 0.9
                       else Individual.empty_individual()
                       for _g in range(pop_limit)]
+        """
+        population = [Individual.empty_individual() for _g in range(pop_limit)]
+
         # But leave this line alone; we have to reassign to population because we get a new population that has more cached stuff in it.
         population = pool.map(Individual.calculate_fitness,
                               population,
@@ -436,7 +509,8 @@ def ga():
         print("Use ctrl-c to terminate this loop manually.")
         try:
             runs = 0
-            while runs == 0:
+            # while runs == 0:
+            while True:
                 now = time.time()
                 # Print out statistics
                 if generation > 0:
@@ -465,7 +539,7 @@ def ga():
                 popdone = time.time()
                 print("Calculated fitnesses in:", popdone - gendone, "seconds")
                 population = next_population
-                runs += 1
+                # runs += 1
         except KeyboardInterrupt:
             pass
     return population
