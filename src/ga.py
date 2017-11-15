@@ -108,7 +108,7 @@ class Individual_Grid(object):
                 new_genome[y][x] = self.genome[y][x] if random.random() < dadChance else other.genome[y][x]
         # do mutation; note we're returning a one-element tuple here
         new_genome = self.mutate(new_genome)
-        return (Individual_Grid(new_genome))
+        return (Individual_Grid(new_genome), )
 
     # Turn the genome into a level string (easy for this genome)
     def to_level(self):
