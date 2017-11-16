@@ -64,46 +64,45 @@ class Individual_Grid(object):
 
     # Mutate a genome into a new genome.  Note that this is a _genome_, not an individual!
     def mutate(self, genome):
-        # STUDENT implement a mutation operator, also consider not mutating this individual
-        # STUDENT also consider weighting the different tile types so it's not uniformly random
-        # STUDENT consider putting more constraints on this to prevent pipes in the air, etc
         new_genome = copy.deepcopy(genome)
 
-        # mutate for each tile: pit, walls, pipe, blocks (coin, breakable, Mushroom), enemies, coins
+        # mutate for each tile: pit, pipe, blocks (coin, breakable, Mushroom), enemies, coins
         left = 10
         right = width - 10
 
-        modifiable = list(range(left, right)) # don't modify the first and last ten tiles
-        unmodifiable = modifiable
+        ground = list(range(left, right))  # don't modify the first and last ten tiles
 
-
-        for i in range(left, right): # refill pits
+        for i in range(left, right):  # refill pits
             new_genome[height - 1][i] = "X"
 
-        counter = 0 # counter keeps track of position for modifiable's index
+        counter = 0  # counter keeps track of position for ground index
+
+        # ---- PITS ----------------------------------------------------------------------------------
 
         # THIS LOOP GENERATES PITS
-        while counter < len(modifiable):
-            temp = modifiable[counter]
-            if random.random() < temp * .25: # chance to create pit is based on progress
-                tileNum = modifiable[counter]
-                pitDistance = random.randrange(2, 6) # Pits are anywhere from 2 to 5 tiles long
-                if tileNum + pitDistance > modifiable[-1]: # check if length is longer than modifiable
-                    pitDistance = counter - modifiable[-1]
-                for tiles in range(pitDistance): # Create a pit and remove it from modifiable
-                    temp = modifiable.pop(counter)
+        while counter < len(ground):
+            temp = ground[counter]
+            if random.random() < temp * .1:  # chance to create pit is based on progress
+                tileNum = ground[counter]
+                pitDistance = random.randrange(2, 6)  # Pits are anywhere from 2 to 5 tiles long
+                if tileNum + pitDistance > ground[-1]:  # check if length is longer than ground
+                    pitDistance = counter - ground[-1]
+                for tiles in range(pitDistance):  # Create a pit and remove it from ground
+                    temp = ground.pop(counter)
                     new_genome[height - 1][temp] = "-"
-                counter += 5 # at least five spaces to next pit
+                counter += 5  # at least five spaces to next pit
             else:
                 counter += 1
 
         counter = 0
 
+        # ---- WALLS ----------------------------------------------------------------------------------
+
         """
         # THIS LOOP GENERATES WALLS
-        while counter < len(modifiable):
+        while counter < len(ground):
             if random.random() < .25:
-                tileNum = modifiable[counter]
+                tileNum = ground[counter]
                 wallDistance = random.randrange(1, 5)
                 for currentDistance in range(wallDistance):
                     if new_genome[height - 1][tileNum + currentDistance] != "-": # Check if there's not a pit
@@ -115,44 +114,177 @@ class Individual_Grid(object):
                 counter += 1
         """
 
-        # THIS LOOP GENERATES PIPE HEADS
-        for x in range(left, right):
-            pipe_head_not_found = True
-            for y in range(height):
-                if new_genome[y][x] == "T" or new_genome[y][x + 1] == "T": # Check if we're not overlapping pipes
-                    pipe_head_found = False
+        # ---- PIPES ----------------------------------------------------------------------------------
+
+        # THIS LOOP GENERATES PIPES IN THE TOP-HALF AND ERASES TOPLESS PIPES
+        x = left
+        while x < right:
+
+            previous_pipe_not_found = True
+
+            # Check that there isn't already a pipe
+            for y in range(4, 1, -1):
+                if new_genome[y][x - 1] == "T":
+                    previous_pipe_not_found = False
                     break
-             
-            if pipe_head_not_found == True:
-                if random.random() < .25:
-                    if random.random () < .5:
-                        new_genome[random.randrange(2, 6)][x] = "T"
-                    else:
-                        new_genome[random.randrange(height - 6, height - 3)][x] = "T"
 
-
-        # THIS LOOP FIXES PIPES
-        for y in range(height):
-            for x in range(left, right):
-                # build a pipe
+            # This loop erases topless pipes
+            for y in range(4, -1, -1):
                 if new_genome[y][x] == "T":
-                    # check if there's an existing pipe body
-                    if new_genome[y + 1][x] == "|": # if pipe body is below
-                        for y2 in range(y + 1, height):
+                    if previous_pipe_not_found:
+                        break
+                    else:
+                        new_genome[y][x] = "-"
+                elif new_genome[y][x] == "|":
+                    new_genome[y][x] = "-"
+
+            if previous_pipe_not_found:
+
+                # Check for pipe head in top-half
+                pipe_head_not_found = True
+                for y in range(4, 1, -1):  # precedence given to taller pipes
+                    if new_genome[y][x] == "T":  # If pipe head found
+                        pipe_head_not_found = False
+                        for y2 in range(0, y + 1):  # Remove all tiles next to it
+                            new_genome[y2][x + 1] = "-"
+                        for y2 in range(0, y):  # generate pipe body
                             new_genome[y2][x] = "|"
-                    elif new_genome[y - 1][x] == "|": # if pipe body is above
-                        for y2 in range(0, y - 1):
+                        break
+
+                # If pipe head not found in top-half
+                if pipe_head_not_found:
+                    if random.random() < .05:  # 5% chance to generate pipe head
+                        chosenHeight = random.randrange(2, 5)
+                        new_genome[chosenHeight][x] = "T"
+                        for y2 in range(0, chosenHeight + 1):  # remove tiles near pipe
+                            new_genome[y2][x + 1] = "-"
+                        for y2 in range(0, chosenHeight):
                             new_genome[y2][x] = "|"
 
+            x += 1
+
+        # THIS LOOP GENERATES PIPES IN THE BOTTOM-HALF AND ERASES TOPLESS PIPES
+        x = left
+        while x < right:
+
+            previous_pipe_not_found = True
+
+            # Check that there isn't already a pipe
+            for y in range(height - 5, height - 2):
+                if new_genome[y][x - 1] == "T":
+                    previous_pipe_not_found = False
+                    break
+
+            # This loop erases topless pipes
+            for y in range(height - 5, height - 1):
+                if new_genome[y][x] == "T":
+                    if previous_pipe_not_found:
+                        break
                     else:
-                        if y > (height / 2):
-                            # down pipe
-                            for y2 in range(y + 1, height):
-                                new_genome[y2][x] = "|"
-                        else:
-                            # up pipe
-                            for y2 in range(0, y):
-                                new_genome[y2][x] = "|"
+                        new_genome[y][x] = "-"
+                elif new_genome[y][x] == "|":
+                    new_genome[y][x] = "-"
+
+            if previous_pipe_not_found:
+
+                # Check for pipe head in bottom-half
+                pipe_head_not_found = True
+                for y in range(height - 5, height - 2):
+                    if new_genome[y][x] == "T":
+                        pipe_head_not_found = False
+                        x += 1
+                        for y2 in range(y, height):  # Remove all tiles next to it
+                            new_genome[y2][x] = "-"
+                        for y2 in range(y + 1, height):
+                            new_genome[y2][x - 1] = "|"
+                        break
+
+                if pipe_head_not_found:
+                    if random.random() < .05:  # 5% chance to generate pipe head
+                        chosenHeight = random.randrange(height - 5, height - 1)
+                        new_genome[chosenHeight][x] = "T"
+                        x += 1
+                        for y2 in range(chosenHeight, height):  # remove tiles near pipe
+                            new_genome[y2][x] = "-"
+                        for y2 in range(chosenHeight + 1, height):
+                            new_genome[y2][x - 1] = "|"
+
+            x += 1
+
+        # ---- BLOCKS --------------------------------------------------------------------------------
+
+        x = left
+        previous = -35
+        mushroomTimer = 3
+
+        while x < len(ground):
+
+            if ground[x] - previous > 30 and random.random() > .5:  # at least 30 blocks of space between blocks
+                generator = []
+                previous = ground[x]
+                blockAmount = random.randrange(2, 5)
+
+                for blockNum in range(blockAmount):  # for each block, overwrite if the space is empty or has a coin
+
+                    hit = 0
+                    for heightAdjustment in range(height - 5, height):
+                        hit = heightAdjustment - (height - 5)  # check if low enough to make second layer
+                        if new_genome[heightAdjustment][ground[x] + blockNum] == "X" or \
+                                        new_genome[heightAdjustment - 5][ground[x] + blockNum] == "T":
+                            if new_genome[heightAdjustment - 4][ground[x] + blockNum] == "-" or \
+                                            new_genome[heightAdjustment - 4][ground[x] + blockNum] == "o":
+                                generator.append((heightAdjustment - 4, ground[x] + blockNum))
+
+                if random.random() > .25 and hit > 4:  # 75% chance to generate a second layer of blocks
+
+                    for blockNum in range(blockAmount):  # repeat for second layer
+                        generator.append((height - (5 + hit), ground[x] + blockNum))
+
+                for item in generator:
+                    if new_genome[item[0]][item[1]] != "-":  # if there's already a block there
+                        new_genome[item[0]][item[1]] = "-"
+                    else:
+                        if mushroomTimer >= 3:  # generate Mushroom if timer is high enough
+                            mushroomTimer = 1
+                            new_genome[item[0]][item[1]] = "M"
+                        elif random.random() > .5:  # 50% chance to generate coin block
+                            new_genome[item[0]][item[1]] = "?"
+                        else:  # 50% chance to generate break block
+                            new_genome[item[0]][item[1]] = "B"
+
+                mushroomTimer += 1
+                x += 3  # don't generate blocks for at least another 3 tiles
+
+            x += 1
+
+        # ---- ENEMIES -------------------------------------------------------------------------------
+
+        x = left
+        while x < len(ground):
+            if random.random() < (ground[x] * .005):
+                for y in range(5, height):
+                    if new_genome[y][ground[x]] == "E":
+                        if random.random() > .5:
+                            new_genome[y - 1][ground[x]] = "-"
+                    if new_genome[y][ground[x]] == "X" or new_genome[y][ground[x]] == "T" or new_genome[y][
+                        ground[x]] == "M" \
+                            or new_genome[y][ground[x]] == "?" or new_genome[y][ground[x]] == "B":
+                        new_genome[y - 1][ground[x]] = "E"  # place enemy above
+                x += 3  # don't generate enemies for at least another 3 tiles
+            x += 1
+
+        # ---- COINS ---------------------------------------------------------------------------------
+
+        x = left
+        while x < right:
+            for y in range(5, height - 2):
+                if new_genome[y][x] == "-":
+                    if random.random() >= .97:  # 3% chance to generate coins
+                        new_genome[y][x] = "o"
+                elif new_genome[y][x] == "o":
+                    if random.random() >= .97:  # 3% chance to remove instead
+                        new_genome[y][x] = "-"
+            x += 1
         return new_genome
 
     # Create zero or more children from self and other
